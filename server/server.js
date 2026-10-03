@@ -17,12 +17,22 @@ const JWT_SECRET =
 app.use(cors());
 app.use(express.json());
 
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-const APPLICATIONS_FILE = path.join(
-  __dirname,
-  'data',
-  'applications.json'
-);
+const DATA_DIR = path.join(__dirname, 'data');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const APPLICATIONS_FILE = path.join(DATA_DIR, 'applications.json');
+
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, '[]', 'utf8');
+}
+
+if (!fs.existsSync(APPLICATIONS_FILE)) {
+  fs.writeFileSync(APPLICATIONS_FILE, '[]', 'utf8');
+}
 function getUsers() {
   try {
     return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
@@ -120,9 +130,6 @@ const newUser = {
     saveUsers(users);
 
 
-if (emailError) {
-  console.error('Verification email error:', emailError);
-}
 
 res.status(201).json({
   success: true,

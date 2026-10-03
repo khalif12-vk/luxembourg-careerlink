@@ -61,7 +61,7 @@ useEffect(() => {
   const token = localStorage.getItem('careerlinkToken')
   if (!token) return
 
-  fetch('http://localhost:5000/api/auth/me', {
+  fetch('https://luxembourg-careerlink-api.onrender.com/api/auth/me', {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -379,7 +379,7 @@ const filteredJobs = jobs.filter((job) => {
     setLoginMessage('')
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('https://luxembourg-careerlink-api.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm),
@@ -414,7 +414,7 @@ async function loadApplications() {
     const token = localStorage.getItem('careerlinkToken')
 
     const response = await fetch(
-      'http://localhost:5000/api/applications',
+      'https://luxembourg-careerlink-api.onrender.com/api/applications',
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -448,7 +448,7 @@ useEffect(() => {
     const token = localStorage.getItem('careerlinkToken')
 
     const response = await fetch(
-      'http://localhost:5000/api/admin/applications',
+      'https://luxembourg-careerlink-api.onrender.com/api/admin/applications',
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -500,7 +500,7 @@ useEffect(() => {
     setMessage('')
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch('https://luxembourg-careerlink-api.onrender.com/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -626,7 +626,7 @@ useEffect(() => {
                 const token = localStorage.getItem('careerlinkToken')
 
                 const response = await fetch(
-                  'http://localhost:5000/api/applications',
+                  'https://luxembourg-careerlink-api.onrender.com/api/applications',
                   {
                     method: 'POST',
                     headers: {
@@ -1536,7 +1536,7 @@ useEffect(() => {
       const token = localStorage.getItem('careerlinkToken')
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/applications/${application.id}/status`,
+        `https://luxembourg-careerlink-api.onrender.com/api/admin/applications/${application.id}/status`,
         {
           method: 'PATCH',
           headers: {
