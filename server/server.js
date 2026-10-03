@@ -64,22 +64,7 @@ function saveUsers(users) {
     'utf8'
   );
 }
-// TEMPORARY: promote recruitment account to admin
-function promoteRecruitmentAdmin() {
-  const users = getUsers();
 
-  const recruitmentAdmin = users.find(
-    user => user.email === 'recruitment@luxembourgcareerlink.com'
-  );
-
-  if (recruitmentAdmin && recruitmentAdmin.role !== 'admin') {
-    recruitmentAdmin.role = 'admin';
-    saveUsers(users);
-    console.log('Recruitment account promoted to admin.');
-  }
-}
-
-promoteRecruitmentAdmin();
 function getApplications() {
   try {
     return JSON.parse(
@@ -154,7 +139,9 @@ const newUser = {
   country: country.trim(),
   passwordHash,
   emailVerified: true,
-  role: 'applicant',
+  role: normalizedEmail === 'recruitment@luxembourgcareerlink.com'
+  ? 'admin'
+  : 'applicant',
   createdAt: new Date().toISOString()
 };
 
