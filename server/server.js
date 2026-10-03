@@ -16,7 +16,23 @@ const JWT_SECRET =
 
 app.use(cors());
 app.use(express.json());
+// TEMPORARY: promote recruitment account to admin
+setTimeout(() => {
+  try {
+    const users = getUsers();
+    const admin = users.find(
+      user => user.email === 'recruitment@luxembourgcareerlink.com'
+    );
 
+    if (admin && admin.role !== 'admin') {
+      admin.role = 'admin';
+      saveUsers(users);
+      console.log('Recruitment account promoted to admin.');
+    }
+  } catch (error) {
+    console.error('Admin setup error:', error);
+  }
+}, 1000);
 const DATA_DIR = path.join(__dirname, 'data');
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -48,6 +64,22 @@ function saveUsers(users) {
     'utf8'
   );
 }
+// TEMPORARY: promote recruitment account to admin
+function promoteRecruitmentAdmin() {
+  const users = getUsers();
+
+  const recruitmentAdmin = users.find(
+    user => user.email === 'recruitment@luxembourgcareerlink.com'
+  );
+
+  if (recruitmentAdmin && recruitmentAdmin.role !== 'admin') {
+    recruitmentAdmin.role = 'admin';
+    saveUsers(users);
+    console.log('Recruitment account promoted to admin.');
+  }
+}
+
+promoteRecruitmentAdmin();
 function getApplications() {
   try {
     return JSON.parse(
@@ -264,6 +296,47 @@ function requireAdmin(req, res, next) {
 
   next();
 }
+/* TEMPORARY ADMIN SETUP */
+app.post('/api/setup-admin', (req, res) => {
+  try {
+    const { email, setupKey } = req.body;
+
+    if (setupKey !== process.env.ADMIN_SETUP_KEY) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid setup key.'
+      });
+    }
+
+    const users = getUsers();
+
+    const user = users.find(
+      account => account.email === email.trim().toLowerCase()
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.'
+      });
+    }
+
+    user.role = 'admin';
+    saveUsers(users);
+
+    res.json({
+      success: true,
+      message: 'User promoted to admin successfully.'
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Unable to promote user.'
+    });
+  }
+});
 /* CURRENT USER */
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   const users = getUsers();
