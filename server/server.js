@@ -96,89 +96,54 @@ async function initializeDatabase() {
 /* =========================================================
    ADMIN ACCOUNT
 ========================================================= */
-
 async function ensureAdminAccount() {
-  const adminEmail = (
-    process.env.ADMIN_EMAIL ||
-    'recruitment@luxembourgcareerlink.com'
-  )
-    .trim()
-    .toLowerCase();
+  const adminEmail =
+    (process.env.ADMIN_EMAIL || "recruitment@luxembourgcareerlink.com")
+      .trim()
+      .toLowerCase();
 
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {
-    console.log(
-      'ADMIN_PASSWORD is not configured. Admin account was not automatically created/reset.'
-    );
+    console.log("ADMIN_PASSWORD is not configured. Admin password was not changed.");
     return;
   }
 
-  if (adminPassword.length < 8) {
-    console.error(
-      'ADMIN_PASSWORD must contain at least 8 characters.'
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  const existing = await pool.query(
+    "SELECT id FROM users WHERE email = $1 LIMIT 1",
+    [adminEmail]
+  );
+
+  if (existing.rows.length === 0) {
+    await pool.query(
+      `INSERT INTO users
+       (name, email, phone, country, password_hash, role, email_verified)
+       VALUES ($1, $2, $3, $4, $5, 'admin', true)`,
+      [
+        "Recruitment Administrator",
+        adminEmail,
+        "",
+        "Luxembourg",
+        passwordHash
+      ]
     );
-    return;
-  }
 
-  try {
-    const existing = await pool.query(
-      `
-      SELECT id
-      FROM users
-      WHERE email = $1
-      LIMIT 1
-      `,
-      [adminEmail]
+    console.log("Recruitment admin account created.");
+  } else {
+    await pool.query(
+      `UPDATE users
+       SET role = 'admin',
+           password_hash = $2,
+           email_verified = true
+       WHERE email = $1`,
+      [adminEmail, passwordHash]
     );
 
-    if (existing.rows.length === 0) {
-      const passwordHash = await bcrypt.hash(adminPassword, 12);
-
-      const adminId = `LC-ADMIN-${Date.now()}`;
-
-      await pool.query(
-        `
-        INSERT INTO users (
-          id,
-          name,
-          email,
-          phone,
-          country,
-          password_hash,
-          email_verified,
-          role
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [
-          adminId,
-          'Luxembourg CareerLink Recruitment',
-          adminEmail,
-          '',
-          '',
-          passwordHash,
-          true,
-          'admin',
-        ]
-      );
-
-      console.log('Recruitment admin account created.');
-    } else {
-      await pool.query(
-        `
-        UPDATE users
-        SET role = 'admin'
-        WHERE email = $1
-        `,
-        [adminEmail]
-      );
-
-      console.log('Recruitment account confirmed as admin.');
-    }
-  } catch (error) {
-    console.error('Admin account setup error:', error);
+    console.log("Recruitment admin password synchronized.");
   }
+}
 }
 
 /* =========================================================
