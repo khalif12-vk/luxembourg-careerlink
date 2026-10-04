@@ -409,6 +409,56 @@ app.post('/api/auth/login', async (req, res) => {
         role: user.role || 'applicant',
       },
     });
+app.get('/api/debug-admin', async (req, res) => {
+  try {
+    const adminEmail = (
+      process.env.ADMIN_EMAIL ||
+      'recruitment@luxembourgcareerlink.com'
+    ).trim().toLowerCase();
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        email,
+        role,
+        email_verified,
+        LENGTH(password_hash) AS password_hash_length
+      FROM users
+      WHERE email = $1
+      LIMIT 1
+      `,
+      [adminEmail]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        accountExists: false,
+        message: 'Admin account does not exist in PostgreSQL.'
+      });
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      success: true,
+      accountExists: true,
+      email: user.email,
+      role: user.role,
+      emailVerified: user.email_verified,
+      passwordHashPresent: Number(user.password_hash_length || 0) > 0,
+      passwordHashLength: user.password_hash_length
+    });
+  } catch (error) {
+    console.error('Debug admin error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Database diagnostic failed.'
+    });
+  }
+});
   } catch (error) {
     console.error('Login error:', error);
 
