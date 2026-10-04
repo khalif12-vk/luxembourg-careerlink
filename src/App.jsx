@@ -391,10 +391,20 @@ const filteredJobs = jobs.filter((job) => {
         return
       }
 
-      localStorage.setItem('careerlinkToken', data.token)
-      setLoggedInUser(data.user)
-      setLoginForm({ email: '', password: '' })
-      setShowLogin(false)
+     localStorage.setItem('careerlinkToken', data.token)
+setLoggedInUser(data.user)
+
+if (data.user.role === 'admin') {
+  setShowAdminDashboard(true)
+  setShowDashboard(false)
+  loadAdminApplications()
+} else {
+  setShowDashboard(true)
+  setShowAdminDashboard(false)
+}
+
+setLoginForm({ email: '', password: '' })
+setShowLogin(false)
     } catch {
       setLoginMessage('Unable to connect. Please make sure the backend is running.')
     } finally {
