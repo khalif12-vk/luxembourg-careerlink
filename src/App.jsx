@@ -649,7 +649,7 @@ useEffect(() => {
                   return
                 }
 
-                alert('Application submitted successfully!')
+               
 
                 setShowApplication(false)
                 setSelectedJob(null)
