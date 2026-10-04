@@ -1065,3 +1065,55 @@ app.get('/api/debug-admin', async (req, res) => {
 }
 
 startServer();
+app.post('/api/debug-admin-password', async (req, res) => {
+  try {
+    const adminEmail = (
+      process.env.ADMIN_EMAIL ||
+      'recruitment@luxembourgcareerlink.com'
+    ).trim().toLowerCase();
+
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password was not received.'
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT password_hash
+      FROM users
+      WHERE email = $1
+      LIMIT 1
+      `,
+      [adminEmail]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        passwordMatches: false,
+        reason: 'Admin account not found.'
+      });
+    }
+
+    const matches = await bcrypt.compare(
+      password,
+      result.rows[0].password_hash
+    );
+
+    return res.json({
+      success: true,
+      passwordMatches: matches
+    });
+  } catch (error) {
+    console.error('Debug password error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Password diagnostic failed.'
+    });
+  }
+});
