@@ -372,80 +372,82 @@ const filteredJobs = jobs.filter((job) => {
   function handleLoginChange(e) {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value })
   }
+async function handleLogin(e) {
+  e.preventDefault()
+  setLoginLoading(true)
+  setLoginMessage('')
 
-  async function handleLogin(e) {
-    e.preventDefault()
-    setLoginLoading(true)
-    setLoginMessage('')
+  const email = loginForm.email.trim().toLowerCase()
+  const password = loginForm.password
 
-    try {
-      const response = await fetch('https://luxembourg-careerlink-api.onrender.com/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm),
-      })
-      const data = await response.json()
+  console.log('Login attempt:', {
+    email,
+    passwordLength: password.length,
+  })
 
-      if (!response.ok) {
-        setLoginMessage(data.message || 'Login failed.')
-        return
-      }
-
-     localStorage.setItem('careerlinkToken', data.token)
-setLoggedInUser(data.user)
-
-if (data.user.role === 'admin') {
-  setShowAdminDashboard(true)
-  setShowDashboard(false)
-  loadAdminApplications()
-} else {
-  setShowDashboard(true)
-  setShowAdminDashboard(false)
-}
-
-setLoginForm({ email: '', password: '' })
-setShowLogin(false)
-    } catch {
-      setLoginMessage('Unable to connect. Please make sure the backend is running.')
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
- function handleLogout() {
-  localStorage.removeItem('careerlinkToken')
-  setLoggedInUser(null)
-  setShowDashboard(false)
-}
-async function loadApplications() {
   try {
-    setApplicationsLoading(true)
-
-    const token = localStorage.getItem('careerlinkToken')
-
     const response = await fetch(
-      'https://luxembourg-careerlink-api.onrender.com/api/applications',
+      'https://luxembourg-careerlink-api.onrender.com/api/auth/login',
       {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       }
     )
 
     const data = await response.json()
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Unable to load applications.')
+    console.log('Login response:', {
+      status: response.status,
+      success: data.success,
+      message: data.message,
+      role: data.user?.role,
+    })
+
+    if (!response.ok || !data.success) {
+      setLoginMessage(data.message || 'Login failed.')
+      return
     }
 
-    setApplications(data.applications || [])
+    localStorage.setItem('careerlinkToken', data.token)
+    setLoggedInUser(data.user)
+
+    if (data.user.role === 'admin') {
+      setShowAdminDashboard(true)
+      setShowDashboard(false)
+      setShowLogin(false)
+      await loadAdminApplications()
+    } else {
+      setShowDashboard(true)
+      setShowAdminDashboard(false)
+      setShowLogin(false)
+    }
+
+    setLoginForm({
+      email: '',
+      password: '',
+    })
   } catch (error) {
-    console.error(error)
+    console.error('Login error:', error)
+    setLoginMessage(
+      'Unable to connect to the recruitment server. Please try again.'
+    )
   } finally {
-    setApplicationsLoading(false)
+    setLoginLoading(false)
   }
 }
-
+function handleLogout() {
+  localStorage.removeItem('careerlinkToken')
+  setLoggedInUser(null)
+  setShowDashboard(false)
+  setShowAdminDashboard(false)
+  setShowLogin(false)
+}
 useEffect(() => {
   if (showDashboard && loggedInUser) {
     loadApplications()
