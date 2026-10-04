@@ -141,9 +141,8 @@ async function ensureAdminAccount() {
       [adminEmail, passwordHash]
     );
 
-    console.log("Recruitment admin password synchronized.");
+       console.log("Recruitment admin password synchronized.");
   }
-}
 }
 
 /* =========================================================
