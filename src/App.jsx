@@ -666,64 +666,76 @@ async function loadAdminApplications() {
           </p>
         </div>
 
-                <div className="mt-8 flex gap-4">
-          <button
-           onClick={async () => {
-  const token = localStorage.getItem('careerlinkToken')
+         <div className="mt-8 flex gap-4">
 
-  if (!token) {
-    alert('Please log in again before applying.')
-    return
-  }
+  <button
+    type="button"
+    onClick={() => {
+      setShowApplication(false)
+      setSelectedJob(null)
+    }}
+    className="rounded-lg border border-slate-300 px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50"
+  >
+    Cancel
+  </button>
 
-  try {
-    const response = await fetch(
-      'https://luxembourg-careerlink-api.onrender.com/api/applications',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          jobTitle: applicationJob.title,
-          category: applicationJob.category,
-          salary: applicationJob.salary,
-          location: applicationJob.location,
-        }),
+  <button
+    type="button"
+    onClick={async () => {
+      const token = localStorage.getItem('careerlinkToken')
+
+      if (!token) {
+        alert('Please log in again before applying.')
+        return
       }
-    )
 
-    const data = await response.json()
+      try {
+        const response = await fetch(
+          'https://luxembourg-careerlink-api.onrender.com/api/applications',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              jobTitle: applicationJob.title,
+              category: applicationJob.category,
+              salary: applicationJob.salary,
+              location: applicationJob.location,
+            }),
+          }
+        )
 
-    if (!response.ok) {
-      alert(data.message || 'Unable to submit application.')
-      return
-    }
+        const data = await response.json()
 
-    // Store the newly submitted application immediately
-    if (data.application) {
-      setApplications((currentApplications) => [
-        data.application,
-        ...currentApplications,
-      ])
-    }
+        if (!response.ok) {
+          alert(data.message || 'Unable to submit application.')
+          return
+        }
 
-    // Close confirmation window and open applicant dashboard
-    setShowApplication(false)
-    setSelectedJob(null)
-    setShowDashboard(true)
+        if (data.application) {
+          setApplications((currentApplications) => [
+            data.application,
+            ...currentApplications,
+          ])
+        }
 
-  } catch (error) {
-    console.error('Application submission error:', error)
-    alert('Unable to connect to the application server.')
-  }
-}} 
-            className="rounded-lg border border-slate-300 px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-        </div>
+        setShowApplication(false)
+        setSelectedJob(null)
+        setShowDashboard(true)
+
+      } catch (error) {
+        console.error('Application submission error:', error)
+        alert('Unable to connect to the application server.')
+      }
+    }}
+    className="rounded-lg bg-blue-700 px-5 py-3.5 font-semibold text-white hover:bg-blue-800"
+  >
+    Confirm Application
+  </button>
+
+</div>      
 
       </div>
     </div>
