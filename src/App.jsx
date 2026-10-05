@@ -2039,9 +2039,26 @@ async function loadAdminApplications() {
 
 <a
   href="mailto:careerlinksasnl@yahoo.com"
-  className="flex-1 rounded-lg border border-slate-300 px-5 py-3 text-center text-sm font-bold text-slate-700 hover:bg-slate-50"
+  aria-label="Contact Support by Email"
+  className="flex-1 rounded-lg bg-blue-600 px-5 py-3 text-center text-sm font-bold text-white hover:bg-blue-700"
 >
-  Email Recruitment
+  <span className="inline-flex items-center justify-center gap-2">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+    Support Email
+  </span>
 </a>
 ```
 
