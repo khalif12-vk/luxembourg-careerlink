@@ -453,7 +453,46 @@ useEffect(() => {
     loadApplications()
   }
 }, [showDashboard, loggedInUser])
-  async function loadAdminApplications() {
+ 
+
+async function loadApplications() {
+  try {
+    setApplicationsLoading(true)
+
+    const token = localStorage.getItem('careerlinkToken')
+
+    if (!token) {
+      console.error('No applicant login token found.')
+      return
+    }
+
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/applications',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Unable to load your applications.'
+      )
+    }
+
+    setApplications(data.applications || [])
+  } catch (error) {
+    console.error('Load applications error:', error)
+  } finally {
+    setApplicationsLoading(false)
+  }
+}
+
+async function loadAdminApplications() {
   try {
     setAdminLoading(true)
 
@@ -506,47 +545,43 @@ useEffect(() => {
   }
 
   async function handleRegister(e) {
-    e.preventDefault()
+  e.preventDefault()
 
-    setLoading(true)
-    setMessage('')
+  setLoading(true)
+  setMessage('')
 
-    try {
-      const response = await fetch('https://luxembourg-careerlink-api.onrender.com/api/auth/register', {
+  try {
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/auth/register',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(form),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage(data.message || 'Registration failed.')
-        setLoading(false)
-        return
       }
+    )
 
-      setRegistered(true)
-      setMessage(data.message)
+    const data = await response.json()
 
-      setForm({
-        name: '',
-        email: '',
-        phone: '',
-        country: '',
-        password: '',
-      })
-    } catch (error) {
-      setMessage(
-        'Unable to connect to the server. Please make sure the backend is running.'
-      )
+    if (!response.ok) {
+      setMessage(data.message || 'Registration failed.')
+      setLoading(false)
+      return
     }
 
-   setLoading(false)
-  }
+    setRegistered(true)
+    setMessage(data.message || 'Account created successfully.')
+    setLoading(false)
 
+  } catch (error) {
+    console.error('Registration error:', error)
+    setMessage('Unable to connect to the registration server.')
+    setLoading(false)
+  }
+}
+
+ 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {showApplication && applicationJob && loggedInUser && (
@@ -633,55 +668,57 @@ useEffect(() => {
 
                 <div className="mt-8 flex gap-4">
           <button
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem('careerlinkToken')
+           onClick={async () => {
+  const token = localStorage.getItem('careerlinkToken')
 
-                const response = await fetch(
-                  'https://luxembourg-careerlink-api.onrender.com/api/applications',
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                      jobTitle: applicationJob.title,
-                      category: applicationJob.category,
-                      salary: applicationJob.salary,
-                      location: applicationJob.location,
-                    }),
-                  }
-                )
+  if (!token) {
+    alert('Please log in again before applying.')
+    return
+  }
 
-                const data = await response.json()
+  try {
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/applications',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          jobTitle: applicationJob.title,
+          category: applicationJob.category,
+          salary: applicationJob.salary,
+          location: applicationJob.location,
+        }),
+      }
+    )
 
-                if (!response.ok) {
-                  alert(data.message || 'Unable to submit application.')
-                  return
-                }
+    const data = await response.json()
 
-               
+    if (!response.ok) {
+      alert(data.message || 'Unable to submit application.')
+      return
+    }
 
-                setShowApplication(false)
-                setSelectedJob(null)
-                setShowDashboard(true)
-                loadApplications()
-              } catch (error) {
-                console.error(error)
-                alert('Unable to connect to the application server.')
-              }
-            }}
-            className="flex-1 rounded-lg bg-blue-700 px-5 py-3.5 font-bold text-white hover:bg-blue-800"
-          >
-            Confirm Application
-          </button>
+    // Store the newly submitted application immediately
+    if (data.application) {
+      setApplications((currentApplications) => [
+        data.application,
+        ...currentApplications,
+      ])
+    }
 
-          <button
-            onClick={() => {
-              setShowApplication(false)
-              setSelectedJob(applicationJob)
-            }}
+    // Close confirmation window and open applicant dashboard
+    setShowApplication(false)
+    setSelectedJob(null)
+    setShowDashboard(true)
+
+  } catch (error) {
+    console.error('Application submission error:', error)
+    alert('Unable to connect to the application server.')
+  }
+}} 
             className="rounded-lg border border-slate-300 px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50"
           >
             Cancel
@@ -1697,15 +1734,14 @@ useEffect(() => {
           </p>
         </div>
 
-      </div>
-    </main>
+            </div>
 
+    </main>
   </div>
 )}
-      {/* APPLICANT DASHBOARD */}
+
       {showDashboard && loggedInUser && (
         <div className="fixed inset-0 z-[90] overflow-y-auto bg-slate-50">
-
           {/* Dashboard Header */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -1867,215 +1903,95 @@ useEffect(() => {
 
       </div>
 
-    ) : (
+   ) : (
 
-      <div className="space-y-4">
+  <div className="space-y-4">
 
-        {applications.map((application) => (
-          <div
-            key={application.id}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
+    {applications.map((application) => (
 
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {application.jobTitle}
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {application.category}
-                </p>
-              </div>
-    <div
-  className={
-    application.status === 'Approved'
-      ? 'rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700'
-      : application.status === 'Rejected'
-        ? 'rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700'
-        : application.status === 'Shortlisted'
-          ? 'rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700'
-          : application.status === 'Interview'
-            ? 'rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700'
-            : application.status === 'Under Review'
-              ? 'rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700'
-              : 'rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700'
-  }
->
-  {application.status}
-</div>
-            </div>
-
-            <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-
-              <div>
-                <span className="font-semibold text-slate-800">
-                  Salary
-                </span>
-                <p>{application.salary} / month</p>
-              </div>
-
-              <div>
-                <span className="font-semibold text-slate-800">
-                  Location
-                </span>
-                <p>{application.location}</p>
-              </div>
-
-              <div>
-                <span className="font-semibold text-slate-800">
-                  Submitted
-                </span>
-                <p>
-                  {new Date(application.submittedAt).toLocaleDateString()}
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        ))}
-
-        
-
-                 <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5">
-        <h3 className="text-lg font-extrabold text-slate-900">
-          Contact Recruitment
-        </h3>
-
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          For next steps, recruitment instructions, or required documents,
-          contact our recruitment team through WhatsApp.
-        </p>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <a
-            href="https://wa.me/447311140315"
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 rounded-lg bg-green-600 px-5 py-3 text-center font-semibold text-white hover:bg-green-700"
-          >
-            WhatsApp: +44 7311 140315
-          </a>
-
-          <a
-            href="https://wa.me/254103643715"
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 rounded-lg bg-green-600 px-5 py-3 text-center font-semibold text-white hover:bg-green-700"
-          >
-            WhatsApp: +254 103 643715
-          </a>
-        </div>
-
-        <p className="mt-4 text-sm text-slate-600">
-          Recruitment email:{' '}
-          <a
-            href="mailto:recruitment@luxembourgcareerlink.com"
-            className="font-semibold text-blue-700 hover:underline"
-          >
-            recruitment@luxembourgcareerlink.com
-          </a>
-        </p>
-      </div>
-    </div>
-    )}
-  </div>
-</div>
-</div>
-</main>
-</div>
-)}
-
-{/* APPLICANT LOGIN */}
-{showLogin && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-    <div className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
-      <button
-        type="button"
-        onClick={() => setShowLogin(false)}
-        className="absolute right-4 top-4 text-slate-400 hover:text-slate-700"
+      <div
+        key={application.id}
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
       >
-        <X className="h-5 w-5" />
-      </button>
 
-      <h2 className="text-2xl font-extrabold text-slate-900">
-        Applicant Login
-      </h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
-      <p className="mt-2 text-sm text-slate-500">
-        Sign in to manage your applications.
-      </p>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              {application.jobTitle || 'Job Application'}
+            </h3>
 
-      <form onSubmit={handleLogin} className="mt-6 space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">
-            Email
-          </label>
-          <input
-            type="email"
-            value={loginForm.email}
-            onChange={(e) =>
-              setLoginForm({ ...loginForm, email: e.target.value })
+            <p className="mt-1 text-sm text-slate-500">
+              {application.category || '—'}
+            </p>
+          </div>
+
+          <div
+            className={
+              application.status === 'Approved'
+                ? 'rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700'
+                : application.status === 'Rejected'
+                  ? 'rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700'
+                  : application.status === 'Shortlisted'
+                    ? 'rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700'
+                    : application.status === 'Interview'
+                      ? 'rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700'
+                      : application.status === 'Under Review'
+                        ? 'rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700'
+                        : 'rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700'
             }
-            className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-600"
-            placeholder="you@example.com"
-            required
-          />
+          >
+            {application.status || 'Submitted'}
+          </div>
+
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">
-            Password
-          </label>
-          <input
-            type="password"
-            value={loginForm.password}
-            onChange={(e) =>
-              setLoginForm({ ...loginForm, password: e.target.value })
-            }
-            className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-600"
-            placeholder="Enter your password"
-            required
-          />
+        <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
+
+          <div>
+            <span className="font-semibold text-slate-800">
+              Salary
+            </span>
+            <p>{application.salary || '—'} / month</p>
+          </div>
+
+          <div>
+            <span className="font-semibold text-slate-800">
+              Location
+            </span>
+            <p>{application.location || '—'}</p>
+          </div>
+
+          <div>
+            <span className="font-semibold text-slate-800">
+              Submitted
+            </span>
+            <p>
+              {application.submittedAt
+                ? new Date(application.submittedAt).toLocaleDateString()
+                : '—'}
+            </p>
+          </div>
+
         </div>
 
-        {loginMessage && (
-          <div className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-700">
-            {loginMessage}
+      </div>
+
+    ))}
+
+      </div>
+
+  )}
+
+        </div>
+     </div>
+</div>
+            </main>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loginLoading}
-          className="w-full rounded-lg bg-blue-700 px-5 py-3.5 font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
-        >
-          {loginLoading ? 'Signing in...' : 'Login'}
-        </button>
-      </form>
-
-      <p className="mt-5 text-center text-sm text-slate-500">
-        Don't have an account?{' '}
-        <button
-          type="button"
-          onClick={() => {
-            setShowLogin(false)
-            openRegister()
-          }}
-          className="font-semibold text-blue-700 hover:underline"
-        >
-          Create Account
-        </button>
-      </p>
-    </div>
-  </div>
-)}
-
-
-{/* APPLICANT LOGIN */}
-{showLogin && (
+  {/* APPLICANT LOGIN */}
+      {showLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) closeLogin() }}>
           <section role="dialog" aria-modal="true" aria-labelledby="login-title" className="relative w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl sm:p-9">
             <button type="button" onClick={closeLogin} aria-label="Close login" className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
@@ -2276,7 +2192,9 @@ useEffect(() => {
         </div>
       )}
 
-    </div>
-  )
-}
+                </div>
+          
+         )
+       }
+
 export default App
