@@ -1975,19 +1975,56 @@ async function loadAdminApplications() {
           </div>
 
           <div>
-            <span className="font-semibold text-slate-800">
-              Submitted
-            </span>
-            <p>
-              {application.submittedAt
-                ? new Date(application.submittedAt).toLocaleDateString()
-                : '—'}
-            </p>
-          </div>
+  <span className="font-semibold text-slate-800">
+    Submitted
+  </span>
+  <p>
+    {application.submittedAt
+      ? new Date(application.submittedAt).toLocaleDateString()
+      : '—'}
+  </p>
+</div>
 
-        </div>
+</div>
 
-      </div>
+<div className="mt-6 border-t border-slate-100 pt-5">
+  <p className="mb-3 text-sm font-semibold text-slate-700">
+    Continue your application
+  </p>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+
+```
+<a
+  href="https://wa.me/254103643715"
+  target="_blank"
+  rel="noreferrer"
+  className="flex-1 rounded-lg bg-green-600 px-5 py-3 text-center text-sm font-bold text-white hover:bg-green-700"
+>
+  WhatsApp — Kenya
+</a>
+
+<a
+  href="https://wa.me/44731140315"
+  target="_blank"
+  rel="noreferrer"
+  className="flex-1 rounded-lg bg-green-600 px-5 py-3 text-center text-sm font-bold text-white hover:bg-green-700"
+>
+  WhatsApp — UK
+</a>
+
+<a
+  href="mailto:careerlinksasnl@yahoo.com"
+  className="flex-1 rounded-lg border border-slate-300 px-5 py-3 text-center text-sm font-bold text-slate-700 hover:bg-slate-50"
+>
+  Email Recruitment
+</a>
+```
+
+  </div>
+</div>
+
+</div>
 
     ))}
 
