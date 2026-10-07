@@ -29,9 +29,34 @@ const [showLogin, setShowLogin] = useState(false)
 const [loginForm, setLoginForm] = useState({ email: '', password: '' })
 
 const [loginLoading, setLoginLoading] = useState(false)
+const [showLoginPassword, setShowLoginPassword] = useState(false)
 
 const [loginMessage, setLoginMessage] = useState('')
+const [showForgotPassword, setShowForgotPassword] = useState(false)
+const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+const [forgotPasswordMessage, setForgotPasswordMessage] = useState('')
+const [forgotPasswordError, setForgotPasswordError] = useState('')
 
+const [showResetPassword, setShowResetPassword] = useState(false)
+const [resetToken, setResetToken] = useState('')
+const [resetPassword, setResetPassword] = useState('')
+const [resetConfirmPassword, setResetConfirmPassword] = useState('')
+const [showResetPasswordValue, setShowResetPasswordValue] = useState(false)
+const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false)
+const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
+const [resetPasswordMessage, setResetPasswordMessage] = useState('')
+const [resetPasswordError, setResetPasswordError] = useState('')
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  const token = params.get('resetToken')
+
+  if (token) {
+    setResetToken(token)
+    setShowResetPassword(true)
+  }
+}, [])
 const [loggedInUser, setLoggedInUser] = useState(null)
 
 const [showDashboard, setShowDashboard] = useState(false)
@@ -439,6 +464,204 @@ async function handleLogin(e) {
     )
   } finally {
     setLoginLoading(false)
+  }
+}
+async function handleForgotPassword(e) {
+  e.preventDefault()
+
+  setForgotPasswordLoading(true)
+  setForgotPasswordMessage('')
+  setForgotPasswordError('')
+
+  const email = forgotPasswordEmail.trim().toLowerCase()
+
+  if (!email) {
+    setForgotPasswordError('Please enter your email address.')
+    setForgotPasswordLoading(false)
+    return
+  }
+
+  try {
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/auth/forgot-password',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      setForgotPasswordError(
+        data.message || 'Unable to request a password reset.'
+      )
+      return
+    }
+
+    setForgotPasswordMessage(
+      data.message ||
+        'If an account exists for that email address, a password reset link has been sent.'
+    )
+  } catch (error) {
+    console.error('Forgot password error:', error)
+
+    setForgotPasswordError(
+      'Unable to connect to the recruitment server. Please try again.'
+    )
+  } finally {
+    setForgotPasswordLoading(false)
+  }
+}
+async function handleResetPassword(e) {
+  e.preventDefault()
+
+  setResetPasswordLoading(true)
+  setResetPasswordMessage('')
+  setResetPasswordError('')
+
+  if (!resetToken) {
+    setResetPasswordError(
+      'This password reset link is invalid or missing.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  if (resetPassword.length < 8) {
+    setResetPasswordError(
+      'Password must contain at least 8 characters.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  if (resetPassword !== resetConfirmPassword) {
+    setResetPasswordError(
+      'Passwords do not match.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  try {
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/auth/reset-password',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: resetToken,
+          password: resetPassword,
+          confirmPassword: resetConfirmPassword,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      setResetPasswordError(
+        data.message || 'Unable to reset your password.'
+      )
+      return
+    }
+
+    setResetPasswordMessage(
+      data.message ||
+        'Your password has been reset successfully. You can now log in.'
+    )
+
+    setResetPassword('')
+    setResetConfirmPassword('')
+  } catch (error) {
+    console.error('Reset password error:', error)
+
+    setResetPasswordError(
+      'Unable to connect to the recruitment server. Please try again.'
+    )
+  } finally {
+    setResetPasswordLoading(false)
+  }
+}
+async function handleResetPassword(e) {
+  e.preventDefault()
+
+  setResetPasswordLoading(true)
+  setResetPasswordMessage('')
+  setResetPasswordError('')
+
+  if (!resetToken) {
+    setResetPasswordError(
+      'This password reset link is invalid or missing.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  if (resetPassword.length < 8) {
+    setResetPasswordError(
+      'Password must contain at least 8 characters.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  if (resetPassword !== resetConfirmPassword) {
+    setResetPasswordError(
+      'Passwords do not match.'
+    )
+    setResetPasswordLoading(false)
+    return
+  }
+
+  try {
+    const response = await fetch(
+      'https://luxembourg-careerlink-api.onrender.com/api/auth/reset-password',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: resetToken,
+          password: resetPassword,
+          confirmPassword: resetConfirmPassword,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      setResetPasswordError(
+        data.message || 'Unable to reset your password.'
+      )
+      return
+    }
+
+    setResetPasswordMessage(
+      data.message ||
+        'Your password has been reset successfully. You can now log in.'
+    )
+
+    setResetPassword('')
+    setResetConfirmPassword('')
+  } catch (error) {
+    console.error('Reset password error:', error)
+
+    setResetPasswordError(
+      'Unable to connect to the recruitment server. Please try again.'
+    )
+  } finally {
+    setResetPasswordLoading(false)
   }
 }
 function handleLogout() {
@@ -2099,8 +2322,45 @@ async function loadAdminApplications() {
               </div>
               <div>
                 <label htmlFor="login-password" className="mb-1.5 block text-sm font-semibold">Password</label>
-                <input id="login-password" type="password" name="password" value={loginForm.password} onChange={handleLoginChange} autoComplete="current-password" required placeholder="Enter your password" className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
+                <div className="relative">
+  <input
+    id="login-password"
+    type={showLoginPassword ? 'text' : 'password'}
+    name="password"
+    value={loginForm.password}
+    onChange={handleLoginChange}
+    autoComplete="current-password"
+    required
+    placeholder="Enter your password"
+    className="w-full rounded-lg border border-slate-300 px-4 py-3 pr-12 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+  />
+
+  <button
+    type="button"
+    onClick={() => setShowLoginPassword(!showLoginPassword)}
+    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+  >
+    {showLoginPassword ? 'Hide' : 'Show'}
+  </button>
+</div>
               </div>
+              <div className="flex justify-end">
+  <button
+    type="button"
+    onClick={() => {
+      setShowLogin(false)
+      setLoginMessage('')
+      setForgotPasswordEmail(loginForm.email)
+      setForgotPasswordMessage('')
+      setForgotPasswordError('')
+      setShowForgotPassword(true)
+    }}
+    className="text-sm font-semibold text-blue-700 hover:text-blue-800"
+  >
+    Forgot password?
+  </button>
+</div>
               {loginMessage && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{loginMessage}</div>}
               <button type="submit" disabled={loginLoading} className="w-full rounded-lg bg-blue-700 px-5 py-3.5 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60">
                 {loginLoading ? 'Logging in...' : 'Login'}
@@ -2110,7 +2370,310 @@ async function loadAdminApplications() {
           </section>
         </div>
       )}
+            {/* RESET PASSWORD MODAL */}
+      {showResetPassword && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !resetPasswordLoading) {
+              setShowResetPassword(false)
+              setResetPasswordError('')
+              setResetPasswordMessage('')
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-password-title"
+            className="relative w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl sm:p-9"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                if (!resetPasswordLoading) {
+                  setShowResetPassword(false)
+                  setResetPasswordError('')
+                  setResetPasswordMessage('')
+                }
+              }}
+              aria-label="Close reset password"
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            >
+              <X size={21} />
+            </button>
 
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+              <ShieldCheck size={24} />
+            </div>
+
+            <h2
+              id="reset-password-title"
+              className="mt-5 text-2xl font-extrabold text-slate-900"
+            >
+              Create a new password
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Enter a new password for your Luxembourg CareerLink applicant
+              account.
+            </p>
+
+            <form
+              onSubmit={handleResetPassword}
+              className="mt-7 space-y-4"
+            >
+              <div>
+                <label
+                  htmlFor="reset-password"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
+                  New password
+                </label>
+
+                <div className="relative">
+                  <input
+                    id="reset-password"
+                    type={showResetPasswordValue ? 'text' : 'password'}
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    placeholder="Enter your new password"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 pr-20 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowResetPasswordValue(!showResetPasswordValue)
+                    }
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  >
+                    {showResetPasswordValue ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Minimum 8 characters.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="reset-confirm-password"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
+                  Confirm new password
+                </label>
+
+                <div className="relative">
+                  <input
+                    id="reset-confirm-password"
+                    type={
+                      showResetConfirmPassword ? 'text' : 'password'
+                    }
+                    value={resetConfirmPassword}
+                    onChange={(e) =>
+                      setResetConfirmPassword(e.target.value)
+                    }
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    placeholder="Confirm your new password"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 pr-20 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowResetConfirmPassword(
+                        !showResetConfirmPassword
+                      )
+                    }
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  >
+                    {showResetConfirmPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              {resetPasswordError && (
+                <div
+                  role="alert"
+                  className="rounded-lg bg-red-50 p-3 text-sm leading-6 text-red-700"
+                >
+                  {resetPasswordError}
+                </div>
+              )}
+
+              {resetPasswordMessage && (
+                <div
+                  role="status"
+                  className="rounded-lg bg-green-50 p-3 text-sm leading-6 text-green-700"
+                >
+                  {resetPasswordMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetPasswordLoading}
+                className="w-full rounded-lg bg-blue-700 px-5 py-3.5 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {resetPasswordLoading
+                  ? 'Resetting password...'
+                  : 'Reset Password'}
+              </button>
+
+              {resetPasswordMessage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetPassword(false)
+                    setResetPasswordMessage('')
+                    setResetPasswordError('')
+                    setResetToken('')
+                    setShowLogin(true)
+
+                    window.history.replaceState(
+                      {},
+                      document.title,
+                      window.location.pathname
+                    )
+                  }}
+                  className="w-full rounded-lg border border-slate-300 px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Back to Login
+                </button>
+              )}
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* FORGOT PASSWORD MODAL */}
+      {showForgotPassword && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !forgotPasswordLoading) {
+              setShowForgotPassword(false)
+              setForgotPasswordError('')
+              setForgotPasswordMessage('')
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="forgot-password-title"
+            className="relative w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl sm:p-9"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                if (!forgotPasswordLoading) {
+                  setShowForgotPassword(false)
+                  setForgotPasswordError('')
+                  setForgotPasswordMessage('')
+                }
+              }}
+              aria-label="Close forgot password"
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            >
+              <X size={21} />
+            </button>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+              <Mail size={24} />
+            </div>
+
+            <h2
+              id="forgot-password-title"
+              className="mt-5 text-2xl font-extrabold text-slate-900"
+            >
+              Forgot your password?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Enter the email address associated with your CareerLink
+              applicant account. If the account exists, we'll send you a
+              secure password reset link.
+            </p>
+
+            <form
+              onSubmit={handleForgotPassword}
+              className="mt-7 space-y-4"
+            >
+              <div>
+                <label
+                  htmlFor="forgot-password-email"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
+                  Email address
+                </label>
+
+                <input
+                  id="forgot-password-email"
+                  type="email"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                  placeholder="you@example.com"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              {forgotPasswordError && (
+                <div
+                  role="alert"
+                  className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {forgotPasswordError}
+                </div>
+              )}
+
+              {forgotPasswordMessage && (
+                <div
+                  role="status"
+                  className="rounded-lg bg-green-50 p-3 text-sm leading-6 text-green-700"
+                >
+                  {forgotPasswordMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={forgotPasswordLoading}
+                className="w-full rounded-lg bg-blue-700 px-5 py-3.5 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {forgotPasswordLoading
+                  ? 'Sending...'
+                  : 'Send Reset Link'}
+              </button>
+
+              <button
+                type="button"
+                disabled={forgotPasswordLoading}
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setForgotPasswordError('')
+                  setForgotPasswordMessage('')
+                  setShowLogin(true)
+                }}
+                className="w-full rounded-lg border border-slate-300 px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Back to Login
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* REGISTRATION MODAL */}
       {/* REGISTRATION MODAL */}
       {showRegister && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4">

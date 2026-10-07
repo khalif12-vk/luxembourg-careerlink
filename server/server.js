@@ -83,7 +83,16 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ
       );
     `);
-
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
     console.log('PostgreSQL database tables are ready.');
 
     await ensureAdminAccount();
@@ -409,6 +418,373 @@ app.post('/api/auth/login', async (req, res) => {
         role: user.role || 'applicant',
       },
     });
+  } catch (error) {
+    console.error('Login error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong while logging in.',
+    });
+  }
+});
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required.',
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const result = await pool.query(
+      `
+      SELECT id, name, email
+      FROM users
+      WHERE email = $1
+      LIMIT 1
+      `,
+      [normalizedEmail]
+    );
+
+    /*
+      Always return the same message whether the account exists
+      or not. This prevents people from discovering registered
+      email addresses.
+    */
+    const genericMessage =
+      'If an account exists for that email address, a password reset link has been sent.';
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: genericMessage,
+      });
+    }
+
+    if (!resend) {
+      console.error('Password reset requested but Resend is not configured.');
+
+      return res.status(500).json({
+        success: false,
+        message: 'Password reset email service is not configured.',
+      });
+    }
+
+    const user = result.rows[0];
+
+    /*
+      Invalidate any previous unused reset tokens for this user.
+    */
+    await pool.query(
+      `
+      UPDATE password_reset_tokens
+      SET used = TRUE
+      WHERE user_id = $1
+      AND used = FALSE
+      `,
+      [user.id]
+    );
+
+    /*
+      Generate a secure random token.
+    */
+    const rawToken = crypto.randomBytes(32).toString('hex');
+
+    /*
+      Store only a SHA-256 hash of the token.
+    */
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+
+    const resetId = `RESET-${Date.now()}-${crypto
+      .randomBytes(3)
+      .toString('hex')}`;
+
+    /*
+      Token expires after 30 minutes.
+    */
+    await pool.query(
+      `
+      INSERT INTO password_reset_tokens (
+        id,
+        user_id,
+        token_hash,
+        expires_at
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        NOW() + INTERVAL '30 minutes'
+      )
+      `,
+      [
+        resetId,
+        user.id,
+        tokenHash,
+      ]
+    );
+
+    const frontendUrl =
+      process.env.FRONTEND_URL ||
+      'https://luxembourg-careerlink.vercel.app';
+
+    const resetUrl =
+      `${frontendUrl}/?resetToken=${encodeURIComponent(rawToken)}`;
+
+    const { data, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: [user.email],
+      subject: 'Reset your Luxembourg CareerLink password',
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1d4ed8;">Luxembourg CareerLink</h2>
+
+          <p>Hello ${user.name},</p>
+
+          <p>
+            We received a request to reset the password for your
+            Luxembourg CareerLink applicant account.
+          </p>
+
+          <p>
+            Click the button below to create a new password:
+          </p>
+
+          <p style="margin: 30px 0;">
+            <a
+              href="${resetUrl}"
+              style="background:#1d4ed8;color:white;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold;display:inline-block;"
+            >
+              Reset Password
+            </a>
+          </p>
+
+          <p>
+            This link will expire in <strong>30 minutes</strong>
+            and can only be used once.
+          </p>
+
+          <p>
+            If you did not request a password reset, you can safely
+            ignore this email.
+          </p>
+
+          <p>
+            Regards,<br>
+            <strong>Luxembourg CareerLink</strong>
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error('Password reset email error:', error);
+
+      /*
+        Remove the unused token if the email could not be sent.
+      */
+      await pool.query(
+        `
+        DELETE FROM password_reset_tokens
+        WHERE id = $1
+        `,
+        [resetId]
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: 'Unable to send the password reset email.',
+      });
+    }
+
+    console.log(
+      `Password reset email sent to ${user.email}`,
+      data?.id || ''
+    );
+
+    return res.json({
+      success: true,
+      message: genericMessage,
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong while requesting a password reset.',
+    });
+  }
+});
+/* =========================================================
+   RESET PASSWORD
+========================================================= */
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const {
+      token,
+      password,
+      confirmPassword,
+    } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset token, password, and password confirmation are required.',
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must contain at least 8 characters.',
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match.',
+      });
+    }
+
+    /*
+      Hash the token received from the email so we can compare it
+      with the hash stored in PostgreSQL.
+    */
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const result = await pool.query(
+      `
+      SELECT
+        pr.id,
+        pr.user_id,
+        pr.expires_at,
+        pr.used
+      FROM password_reset_tokens pr
+      WHERE pr.token_hash = $1
+      LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link is invalid or has expired.',
+      });
+    }
+
+    const resetToken = result.rows[0];
+
+    if (resetToken.used) {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link has already been used.',
+      });
+    }
+
+    if (new Date(resetToken.expires_at) <= new Date()) {
+      await pool.query(
+        `
+        UPDATE password_reset_tokens
+        SET used = TRUE
+        WHERE id = $1
+        `,
+        [resetToken.id]
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link has expired.',
+      });
+    }
+
+    /*
+      Hash the new password using the same bcrypt settings
+      already used by your existing login system.
+    */
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    /*
+      Update the user's password and mark the reset token as used
+      in one database transaction.
+    */
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `
+        UPDATE users
+        SET password_hash = $1
+        WHERE id = $2
+        `,
+        [
+          passwordHash,
+          resetToken.user_id,
+        ]
+      );
+
+      await client.query(
+        `
+        UPDATE password_reset_tokens
+        SET used = TRUE
+        WHERE id = $1
+        `,
+        [resetToken.id]
+      );
+
+      /*
+        Invalidate any other unused reset tokens belonging
+        to the same user.
+      */
+      await client.query(
+        `
+        UPDATE password_reset_tokens
+        SET used = TRUE
+        WHERE user_id = $1
+        AND used = FALSE
+        `,
+        [resetToken.user_id]
+      );
+
+      await client.query('COMMIT');
+    } catch (transactionError) {
+      await client.query('ROLLBACK');
+      throw transactionError;
+    } finally {
+      client.release();
+    }
+
+    res.json({
+      success: true,
+      message: 'Your password has been reset successfully. You can now log in with your new password.',
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong while resetting your password.',
+    });
+  }
+});
 app.get('/api/debug-admin', async (req, res) => {
   try {
     const adminEmail = (
@@ -459,15 +835,7 @@ app.get('/api/debug-admin', async (req, res) => {
     });
   }
 });
-  } catch (error) {
-    console.error('Login error:', error);
-
-    res.status(500).json({
-      success: false,
-      message: 'Something went wrong while logging in.',
-    });
-  }
-});
+ 
 
 /* =========================================================
    AUTHENTICATION MIDDLEWARE
